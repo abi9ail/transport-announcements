@@ -1,0 +1,9 @@
+[DEFAULT]
+ignoreip = 127.0.0.1/8 172.16.0.0/14
+
+[asterisk]
+enabled = true
+logpath  = /var/log/asterisk/security
+action = iptables-allports[name=ASTERISK, protocol=all]
+maxretry = 3
+bantime = 86400

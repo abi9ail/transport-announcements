@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - db_data:/var/local/pgsql/data
+      - db_gtfs:/usr/local/src/sydneytrains
+    secrets:
+      - api_key
+
+  postgrest:
+    image: postgrest/postgrest
+    environment:
+      PGRST_SERVER_HOST: 0.0.0.0
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://postgrest:3000
+      PGRST_DB_ANON_ROLE: web_anon
+    restart: always
+    depends_on:
+      db:
+        restart: true
+        condition: service_started
+
+  asterisk:
+    image: asterisk
+    restart: always
+    ports:
+      - "5060:5060/tcp"
+      - "5060:5060/udp"
+      - "5061:5061/tcp"
+      - "5061:5061/udp"
+      - "10000-10099:10000-10099/tcp"
+      - "10000-10099:10000-10099/udp"
+    depends_on:
+      postgrest:
+        restart: true
+        condition: service_started
+      db:
+        restart: true
+        condition: service_started
+    secrets:
+      - api_key
+      - sip_server
+      - sip_match
+      - sip_username
+      - sip_password
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+    volumes:
+      - fail2ban:/var/lib/fail2ban
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+secrets:
+  api_key:
+    file: secrets/api_key.txt
+  sip_server:
+    file: secrets/sip_server.txt
+  sip_match:
+    file: secrets/sip_match.txt
+  sip_username:
+    file: secrets/sip_username.txt
+  sip_password:
+    file: secrets/sip_password.txt
+
+volumes:
+  db_data:
+  db_gtfs:
+  fail2ban:
